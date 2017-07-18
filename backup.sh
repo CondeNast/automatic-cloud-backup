@@ -6,13 +6,15 @@ FILEPREFIX="JIRA"
 
 umask 0077 
 
-if [ -r "$CONFIG" ]; then
-    . $CONFIG
-    DOWNLOAD_URL="https://${INSTANCE}"
-    INSTANCE_PATH=$INSTANCE
-else
-    echo "Usable to load $CONFIG! Please create one based on backup.sh.vars.example"
-    exit 1
+if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMESTAMP || -z $TIMEZONE || -z $SLEEP_SECONDS || -z $PROGRESS_CHECKS ]]; then
+    if [ -r "$CONFIG" ]; then
+        . $CONFIG
+        DOWNLOAD_URL="https://${INSTANCE}"
+        INSTANCE_PATH=$INSTANCE
+    else
+       echo "Usable to load $CONFIG! Please create one based on backup.sh.vars.example"
+       exit 1
+    fi
 fi
 
 while [[ $# -gt 1 ]]
