@@ -4,6 +4,8 @@ CONFIG="$HOME/.backup.sh.vars"
 ATTACHMENTS="true"
 FILEPREFIX="JIRA"
 
+umask 0077 
+
 if [ -r "$CONFIG" ]; then
     . $CONFIG
     DOWNLOAD_URL="https://${INSTANCE}"
