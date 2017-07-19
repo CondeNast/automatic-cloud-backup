@@ -76,8 +76,12 @@ if [ $? -ne 0 ]; then
     curl --silent --cookie-jar $COOKIE_FILE_LOCATION -X POST "https://${INSTANCE}/rest/auth/1/session" -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}" -H 'Content-Type: application/json' --output /dev/null
 fi
 
+echo "curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d '{"cbAttachments":"${ATTACHMENTS}" }' )" ; # DEBUG
+
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
 BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d '{"cbAttachments":"${ATTACHMENTS}" }' )
+
+echo $BKPMSG ; # DEBUG
 
 # Checks if we were authorized to create a new backup
 if [ "$(echo "$BKPMSG" | grep -c Unauthorized)" -ne 0 ]  || [ "$(echo "$BKPMSG" | grep -ic "<status-code>401</status-code>")" -ne 0 ]; then
@@ -91,6 +95,7 @@ for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
     FILE_NAME=$(echo "$PROGRESS_JSON" | sed -n 's/.*"fileName"[ ]*:[ ]*"\([^"]*\).*/\1/p')
 
     echo $PROGRESS_JSON|grep error > /dev/null && break
+    echo $PROGRESS_JSON ; # DEBUG
 
     if [ ! -z "$FILE_NAME" ]; then
         break
