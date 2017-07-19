@@ -76,10 +76,8 @@ if [ $? -ne 0 ]; then
     curl --silent --cookie-jar $COOKIE_FILE_LOCATION -X POST "https://${INSTANCE}/rest/auth/1/session" -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}" -H 'Content-Type: application/json' --output /dev/null
 fi
 
-echo "curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d '{"cbAttachments":"${ATTACHMENTS}" }' )" ; # DEBUG
-
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
-BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d '{"cbAttachments":"${ATTACHMENTS}" }' )
+BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d "{\"cbAttachments\":\"${ATTACHMENTS}\" }" )
 
 echo $BKPMSG ; # DEBUG
 
