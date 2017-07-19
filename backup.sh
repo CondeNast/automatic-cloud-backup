@@ -108,5 +108,6 @@ if [ -z "$FILE_NAME" ]; then
     exit
 else
     # Download the new way, starting Nov 2016
+echo  "curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE"" ; # DEBUG
     curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE"
 fi
