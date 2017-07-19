@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 CONFIG="$HOME/.backup.sh.vars"
 ATTACHMENTS="true"
