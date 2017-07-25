@@ -71,12 +71,15 @@ COOKIE_FILE_LOCATION="$HOME/.backup.sh-cookie"
 # Only generate a new cookie if one does not exist, or if it is more than 24 
 # hours old. This is to allow reuse of the same cookie until a new backup can be 
 # triggered.
+echo "Checking for cookie" #DEBUG
 find $COOKIE_FILE_LOCATION -mtime -1 2> /dev/null |grep $COOKIE_FILE_LOCATION 2>&1 > /dev/null
 if [ $? -ne 0 ]; then
+    echo "Generating cookie" #DEBUG
     curl --silent --cookie-jar $COOKIE_FILE_LOCATION -X POST "https://${INSTANCE}/rest/auth/1/session" -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}" -H 'Content-Type: application/json' --output /dev/null
 fi
 
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
+echo "Triggering backup" #DEBUG
 BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d "{\"cbAttachments\":\"${ATTACHMENTS}\" }" )
 
 echo $BKPMSG ; # DEBUG
@@ -88,6 +91,7 @@ if [ "$(echo "$BKPMSG" | grep -c Unauthorized)" -ne 0 ]  || [ "$(echo "$BKPMSG" 
 fi
 
 #Checks if the backup exists every $SLEEP_SECONDS seconds, $PROGRESS_CHECKS times.
+echo "Polling for backup" #DEBUG
 for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
     PROGRESS_JSON=$(curl -s --cookie $COOKIE_FILE_LOCATION $PROGRESS_URL)
     FILE_NAME=$(echo "$PROGRESS_JSON" | sed -n 's/.*"fileName"[ ]*:[ ]*"\([^"]*\).*/\1/p')
