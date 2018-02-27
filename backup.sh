@@ -16,7 +16,9 @@ if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMEST
 fi
 
 DOWNLOAD_URL="https://${INSTANCE}"
-INSTANCE_PATH=$INSTANCE
+RUNBACKUP_URL="https://${INSTANCE}/rest/backup/1/export/runbackup"
+#PROGRESS_URL="https://${INSTANCE_PATH}/rest/obm/1.0/getprogress.json"
+PROGRESS_URL="https://${INSTANCE_PATH}/rest/backup/1.0/getprogress.json"
 
 while [[ $# -gt 1 ]]
 do
@@ -25,8 +27,9 @@ do
     case $key in
         -s|--source)
             if [[  $2 == "wiki" ]] || [[ $2 == "confluence" ]]; then
-                INSTANCE_PATH=$INSTANCE/wiki
-                DOWNLOAD_URL="https://${INSTANCE_PATH}/download"
+                RUNBACKUP_URL="https://${INSTANCE}/wiki/rest/obm/1.0/runbackup"
+                PROGRESS_URL="https://${INSTANCE}/wiki/rest/obm/1.0/getprogress.json"
+                DOWNLOAD_URL="https://${INSTANCE}/wiki/download"
                 FILEPREFIX="CONFLUENCE"
             fi
             shift # past argument
@@ -49,8 +52,6 @@ do
 done
 
 BASENAME=$1
-RUNBACKUP_URL="https://${INSTANCE_PATH}/rest/obm/1.0/runbackup"
-PROGRESS_URL="https://${INSTANCE_PATH}/rest/obm/1.0/getprogress.json"
 
 # Grabs cookies and generates the backup on the UI. 
 TODAY=$(TZ=$TIMEZONE date +%Y%m%d)
@@ -91,6 +92,12 @@ if [ "$(echo "$BKPMSG" | grep -c Unauthorized)" -ne 0 ]  || [ "$(echo "$BKPMSG" 
     exit
 fi
 
+if [[ $FILEPREFIX == 'JIRA' ]]; then
+    TASK_ID=$(curl -s --cookie $COOKIE_FILE_LOCATION -H "Accept: application/json" -H "Content-Type: application/json" https://${INSTANCE}/rest/backup/1/export/lastTaskId)
+    PROGRESS_URL="https://${INSTANCE}/rest/backup/1/export/getProgress?taskId=${TASK_ID}"
+fi
+    
+# Different methods for checking status and downloading backups for confluence and jira
 #Checks if the backup exists every $SLEEP_SECONDS seconds, $PROGRESS_CHECKS times.
 echo "Polling for backup" #DEBUG
 for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
@@ -105,12 +112,13 @@ for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
     fi
     sleep $SLEEP_SECONDS
 done
-
+ 
 # If after $PROGRESS_CHECKS attempts it still fails it ends the script.
 if [ -z "$FILE_NAME" ]; then
     exit
 else
-    # Download the new way, starting Nov 2016
+
+# Download the new way, starting Nov 2016
 echo  "curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE"" ; # DEBUG
     curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE"
 fi
