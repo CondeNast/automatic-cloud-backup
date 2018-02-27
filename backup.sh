@@ -15,7 +15,7 @@ if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMEST
     fi
 fi
 
-DOWNLOAD_URL="https://${INSTANCE}"
+DOWNLOAD_URL="https://${INSTANCE}/plugins/servlet"
 RUNBACKUP_URL="https://${INSTANCE}/rest/backup/1/export/runbackup"
 
 while [[ $# -gt 1 ]]
