@@ -78,7 +78,14 @@ fi
 
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
 echo "Triggering backup" #DEBUG
-BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d "{\"cbAttachments\":\"${ATTACHMENTS}\" }" )
+#BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d "{\"cbAttachments\":\"${ATTACHMENTS}\" }" )
+BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION $RUNBACKUP_URL \
+    -X POST \
+    -H 'DNT: 1' \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/javascript, */*; q=0.01' \
+    -H 'X-Requested-With: XMLHttpRequest' \
+    --data-binary "{\"cbAttachments\":\"${ATTACHMENTS}\", \"exportToCloud\":\"true\" }" )
 
 echo $BKPMSG ; # DEBUG
 
@@ -93,7 +100,6 @@ if [[ $FILEPREFIX == 'JIRA' ]]; then
     PROGRESS_URL="https://${INSTANCE}/rest/backup/1/export/getProgress?taskId=${TASK_ID}"
 fi
     
-# Different methods for checking status and downloading backups for confluence and jira
 #Checks if the backup exists every $SLEEP_SECONDS seconds, $PROGRESS_CHECKS times.
 echo "Polling for backup" #DEBUG
 for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
