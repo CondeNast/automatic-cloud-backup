@@ -17,8 +17,6 @@ fi
 
 DOWNLOAD_URL="https://${INSTANCE}"
 RUNBACKUP_URL="https://${INSTANCE}/rest/backup/1/export/runbackup"
-#PROGRESS_URL="https://${INSTANCE_PATH}/rest/obm/1.0/getprogress.json"
-PROGRESS_URL="https://${INSTANCE_PATH}/rest/backup/1.0/getprogress.json"
 
 while [[ $# -gt 1 ]]
 do
