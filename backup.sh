@@ -51,8 +51,6 @@ do
     shift # past argument or value
 done
 
-BASENAME=$1
-
 # Grabs cookies and generates the backup on the UI. 
 TODAY=$(TZ=$TIMEZONE date +%Y%m%d)
 
