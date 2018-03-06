@@ -76,6 +76,11 @@ if [ $? -ne 0 ]; then
     curl --silent --cookie-jar $COOKIE_FILE_LOCATION -X POST "https://${INSTANCE}/rest/auth/1/session" -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}" -H 'Content-Type: application/json' --output /dev/null
 fi
 
+# Disable attachment backups if backing up JIRA (Temporary workaround)
+if [[ $FILEPREFIX == 'JIRA' ]]; then
+    ATTACHMENTS="true"
+fi
+
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
 echo "Triggering backup" #DEBUG
 #BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d "{\"cbAttachments\":\"${ATTACHMENTS}\" }" )
@@ -95,6 +100,7 @@ if [ "$(echo "$BKPMSG" | grep -c Unauthorized)" -ne 0 ]  || [ "$(echo "$BKPMSG" 
     exit
 fi
 
+# Uses new JIRA URL if monitoring JIRA backup job
 if [[ $FILEPREFIX == 'JIRA' ]]; then
     TASK_ID=$(curl -s --cookie $COOKIE_FILE_LOCATION -H "Accept: application/json" -H "Content-Type: application/json" https://${INSTANCE}/rest/backup/1/export/lastTaskId)
     PROGRESS_URL="https://${INSTANCE}/rest/backup/1/export/getProgress?taskId=${TASK_ID}"
