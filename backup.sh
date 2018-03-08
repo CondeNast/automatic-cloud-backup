@@ -78,7 +78,7 @@ fi
 
 # Disable attachment backups if backing up JIRA (Temporary workaround)
 if [[ $FILEPREFIX == 'JIRA' ]]; then
-    ATTACHMENTS="true"
+    ATTACHMENTS="false"
 fi
 
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
