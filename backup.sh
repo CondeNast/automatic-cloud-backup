@@ -43,6 +43,9 @@ do
             fi
             shift # past argument
             ;;
+        -d|--debug)
+            DEBUG=true
+            ;;
 
     esac
     shift # past argument or value
@@ -78,13 +81,16 @@ COOKIE_FILE_LOCATION="$HOME/.backup.sh-cookie"
 # Only generate a new cookie if one does not exist, or if it is more than 24 
 # hours old. This is to allow reuse of the same cookie until a new backup can be 
 # triggered.
+if [[ $DEBUG == true ]]; then echo "Checking for cookie"; fi
 find $COOKIE_FILE_LOCATION -mtime -1 2> /dev/null |grep $COOKIE_FILE_LOCATION 2>&1 > /dev/null
 if [ $? -ne 0 ]; then
+    if [[ $DEBUG == true ]]; then echo "Generating cookie"; fi
     curl --silent --cookie-jar $COOKIE_FILE_LOCATION -X POST "https://${INSTANCE}/rest/auth/1/session" -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}" -H 'Content-Type: application/json' --output /dev/null
     chmod 600 $COOKIE_FILE_LOCATION
 fi
 
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
+if [[ $DEBUG == true ]]; then echo "Triggering backup"; fi
 BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION $RUNBACKUP_URL \
     -X POST \
     -H 'DNT: 1' \
@@ -92,6 +98,8 @@ BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION $RUNBACKUP_URL \
     -H 'Accept: application/json, text/javascript, */*; q=0.01' \
     -H 'X-Requested-With: XMLHttpRequest' \
     --data-binary "{\"cbAttachments\":\"${ATTACHMENTS}\", \"exportToCloud\":\"true\" }" )
+
+if [[ $DEBUG == true ]]; then echo $BKPMSG; fi
 
 # Checks if we were authorized to create a new backup
 if [ $FILEPREFIX = "JIRA" ]; then
@@ -109,6 +117,7 @@ else
 fi
 
 # Checks if the backup exists every $SLEEP_SECONDS seconds, $PROGRESS_CHECKS times.
+if [[ $DEBUG == true ]]; then echo "Polling for backup"; fi
 for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
 
     if [ $FILEPREFIX = "JIRA" ]; then
@@ -130,6 +139,7 @@ for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
             break
         fi
     fi
+    if [[ $DEBUG == true ]]; then echo $PROGRESS_JSON; fi
     sleep $SLEEP_SECONDS
 done
 
@@ -138,5 +148,6 @@ if [ -z "$FILE_NAME" ]; then
     exit
 else
     # Download the new way, starting Nov 2016
+    if [[ $DEBUG == true ]]; then echo "curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE""; fi
     curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE"
 fi
