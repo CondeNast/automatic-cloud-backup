@@ -6,7 +6,7 @@ FILEPREFIX="JIRA"
 
 umask 0077 
 
-if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMESTAMP || -z $TIMEZONE || -z $SLEEP_SECONDS || -z $PROGRESS_CHECKS || -z $ATTACHMENTS ]]; then
+if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMESTAMP || -z $TIMEZONE || -z $SLEEP_SECONDS || -z $PROGRESS_CHECKS ]]; then
     if [ -r "$CONFIG" ]; then
         . $CONFIG
     else
