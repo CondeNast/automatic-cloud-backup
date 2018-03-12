@@ -6,7 +6,7 @@ FILEPREFIX="JIRA"
 
 umask 0077 
 
-if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMESTAMP || -z $TIMEZONE || -z $SLEEP_SECONDS || -z $PROGRESS_CHECKS ]]; then
+if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMESTAMP || -z $TIMEZONE || -z $SLEEP_SECONDS || -z $PROGRESS_CHECKS || -z $ATTACHMENTS ]]; then
     if [ -r "$CONFIG" ]; then
         . $CONFIG
     else
@@ -15,8 +15,8 @@ if [[ -z $USERNAME || -z $PASSWORD || -z $INSTANCE || -z $LOCATION || -z $TIMEST
     fi
 fi
 
-DOWNLOAD_URL="https://${INSTANCE}/plugins/servlet"
-RUNBACKUP_URL="https://${INSTANCE}/rest/backup/1/export/runbackup"
+DOWNLOAD_URL="https://${INSTANCE}/plugins/servlet/export/download"
+INSTANCE_PATH=$INSTANCE
 
 while [[ $# -gt 1 ]]
 do
@@ -25,9 +25,8 @@ do
     case $key in
         -s|--source)
             if [[  $2 == "wiki" ]] || [[ $2 == "confluence" ]]; then
-                RUNBACKUP_URL="https://${INSTANCE}/wiki/rest/obm/1.0/runbackup"
-                PROGRESS_URL="https://${INSTANCE}/wiki/rest/obm/1.0/getprogress.json"
-                DOWNLOAD_URL="https://${INSTANCE}/wiki/download"
+                INSTANCE_PATH=$INSTANCE/wiki
+                DOWNLOAD_URL="https://${INSTANCE_PATH}/download"
                 FILEPREFIX="CONFLUENCE"
             fi
             shift # past argument
@@ -49,6 +48,16 @@ do
     shift # past argument or value
 done
 
+LASTTASK_URL="https://${INSTANCE_PATH}/rest/backup/1/export/lastTaskId"
+
+if [ $FILEPREFIX = "JIRA" ]; then
+    RUNBACKUP_URL="https://${INSTANCE_PATH}/rest/backup/1/export/runbackup"
+    PROGRESS_URL="https://${INSTANCE_PATH}/rest/internal/2/task/progress/"
+else
+    RUNBACKUP_URL="https://${INSTANCE_PATH}/rest/obm/1.0/runbackup"
+    PROGRESS_URL="https://${INSTANCE_PATH}/rest/obm/1.0/getprogress.json"
+fi
+
 # Grabs cookies and generates the backup on the UI. 
 TODAY=$(TZ=$TIMEZONE date +%Y%m%d)
 
@@ -69,21 +78,13 @@ COOKIE_FILE_LOCATION="$HOME/.backup.sh-cookie"
 # Only generate a new cookie if one does not exist, or if it is more than 24 
 # hours old. This is to allow reuse of the same cookie until a new backup can be 
 # triggered.
-echo "Checking for cookie" #DEBUG
 find $COOKIE_FILE_LOCATION -mtime -1 2> /dev/null |grep $COOKIE_FILE_LOCATION 2>&1 > /dev/null
 if [ $? -ne 0 ]; then
-    echo "Generating cookie" #DEBUG
     curl --silent --cookie-jar $COOKIE_FILE_LOCATION -X POST "https://${INSTANCE}/rest/auth/1/session" -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}" -H 'Content-Type: application/json' --output /dev/null
-fi
-
-# Disable attachment backups if backing up JIRA (Temporary workaround)
-if [[ $FILEPREFIX == 'JIRA' ]]; then
-    ATTACHMENTS="false"
+    chmod 600 $COOKIE_FILE_LOCATION
 fi
 
 # The $BKPMSG variable will print the error message, you can use it if you're planning on sending an email
-echo "Triggering backup" #DEBUG
-#BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION --header "X-Atlassian-Token: no-check" -H "X-Requested-With: XMLHttpRequest" -H "Content-Type: application/json"  -X POST $RUNBACKUP_URL -d "{\"cbAttachments\":\"${ATTACHMENTS}\" }" )
 BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION $RUNBACKUP_URL \
     -X POST \
     -H 'DNT: 1' \
@@ -92,41 +93,50 @@ BKPMSG=$(curl -s --cookie $COOKIE_FILE_LOCATION $RUNBACKUP_URL \
     -H 'X-Requested-With: XMLHttpRequest' \
     --data-binary "{\"cbAttachments\":\"${ATTACHMENTS}\", \"exportToCloud\":\"true\" }" )
 
-echo $BKPMSG ; # DEBUG
-
 # Checks if we were authorized to create a new backup
-if [ "$(echo "$BKPMSG" | grep -c Unauthorized)" -ne 0 ]  || [ "$(echo "$BKPMSG" | grep -ic "<status-code>401</status-code>")" -ne 0 ]; then
-    echo "ERROR: authorization failure"
-    exit
+if [ $FILEPREFIX = "JIRA" ]; then
+    STATUS_CODE=$(echo "$BKPMSG" | jq '."status-code"' -r)
+
+    if [ "$STATUS_CODE" == "401" ]; then
+        echo "ERROR: authorization failure"
+        exit
+    fi
+else
+    if [ "$(echo "$BKPMSG" | grep -c Unauthorized)" -ne 0 ]  || [ "$(echo "$BKPMSG" | grep -ic "<status-code>401</status-code>")" -ne 0 ]; then
+        echo "ERROR: authorization failure"
+        exit
+    fi
 fi
 
-# Uses new JIRA URL if monitoring JIRA backup job
-if [[ $FILEPREFIX == 'JIRA' ]]; then
-    TASK_ID=$(curl -s --cookie $COOKIE_FILE_LOCATION -H "Accept: application/json" -H "Content-Type: application/json" https://${INSTANCE}/rest/backup/1/export/lastTaskId)
-    PROGRESS_URL="https://${INSTANCE}/rest/backup/1/export/getProgress?taskId=${TASK_ID}"
-fi
-    
 #Checks if the backup exists every $SLEEP_SECONDS seconds, $PROGRESS_CHECKS times.
-echo "Polling for backup" #DEBUG
 for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
-    PROGRESS_JSON=$(curl -s --cookie $COOKIE_FILE_LOCATION $PROGRESS_URL)
-    FILE_NAME=$(echo "$PROGRESS_JSON" | sed -n 's/.*"fileName"[ ]*:[ ]*"\([^"]*\).*/\1/p')
 
-    echo $PROGRESS_JSON|grep error > /dev/null && break
-    echo $PROGRESS_JSON ; # DEBUG
+    if [ $FILEPREFIX = "JIRA" ]; then
+        LASTTASKID=$(curl -s --cookie $COOKIE_FILE_LOCATION $LASTTASK_URL)
+        PROGRESS_JSON=$(curl -s --cookie $COOKIE_FILE_LOCATION $PROGRESS_URL$LASTTASKID)
 
-    if [ ! -z "$FILE_NAME" ]; then
-        break
+        STATUS=$(echo "$PROGRESS_JSON" | jq '.status' -r)
+
+        if [ "$STATUS" == "Success" ]; then
+            FILE_NAME=$(echo $PROGRESS_JSON | jq '.result' -r | jq '"\(.mediaFileId)/\(.fileName)"' -r)
+            break
+        fi
+    else
+        PROGRESS_JSON=$(curl -s --cookie $COOKIE_FILE_LOCATION $PROGRESS_URL)
+        FILE_NAME=$(echo "$PROGRESS_JSON" | sed -n 's/.*"fileName"[ ]*:[ ]*"\([^"]*\).*/\1/p')
+        echo $PROGRESS_JSON|grep error > /dev/null && break
+
+        if [ ! -z "$FILE_NAME" ]; then
+            break
+        fi
     fi
     sleep $SLEEP_SECONDS
 done
- 
+
 # If after $PROGRESS_CHECKS attempts it still fails it ends the script.
 if [ -z "$FILE_NAME" ]; then
     exit
 else
-
-# Download the new way, starting Nov 2016
-echo  "curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE"" ; # DEBUG
+    # Download the new way, starting Nov 2016
     curl -s -S -L --cookie $COOKIE_FILE_LOCATION "$DOWNLOAD_URL/$FILE_NAME" -o "$OUTFILE"
 fi
