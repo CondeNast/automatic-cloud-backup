@@ -108,7 +108,7 @@ else
     fi
 fi
 
-#Checks if the backup exists every $SLEEP_SECONDS seconds, $PROGRESS_CHECKS times.
+# Checks if the backup exists every $SLEEP_SECONDS seconds, $PROGRESS_CHECKS times.
 for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
 
     if [ $FILEPREFIX = "JIRA" ]; then
