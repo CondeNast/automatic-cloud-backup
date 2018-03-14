@@ -18,7 +18,7 @@ fi
 DOWNLOAD_URL="https://${INSTANCE}/plugins/servlet/export/download"
 INSTANCE_PATH=$INSTANCE
 
-while [[ $# -gt 1 ]]
+while [[ $# -ge 1 ]]
 do
     key="$1"
 
