@@ -128,6 +128,7 @@ for (( c=1; c<=$PROGRESS_CHECKS; c++ )) do
 
         if [ "$STATUS" == "Success" ]; then
             FILE_NAME=$(echo $PROGRESS_JSON | jq '.result' -r | jq '"\(.mediaFileId)/\(.fileName)"' -r)
+            if [[ $DEBUG == true ]]; then echo $PROGRESS_JSON; fi
             break
         fi
     else
